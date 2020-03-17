@@ -1,0 +1,258 @@
+---
+title: "Flight Data Tutorial"
+output: learnr::tutorial
+runtime: shiny_prerendered
+description: "Flight Data Tutorials"
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(tidyverse)
+library(nycflights13)
+library(lubridate)
+library(caret)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Welcome
+In the flight data tutorial, we will learn to:  
+1. Summarize the data  
+2. Visualize the data  
+3. Preprocess the data  
+
+### Description and Summary
+NYC Flight Delays
+This dataset contains information about flights departing from NYC airports (EWR, JFK, and LGA) in 2013 taken from the nycflights13package. The data contains 336k rows and 19 columns. The columns include the following data - year, month, day, dep_time, sched_dep_time, dep_delay, arr_time, sched_arr_time, arr_delay, carrier, flight, tailnum, origin, dest, air_time, distance, hour, minute, time_hour. 
+
+### Setup
+The following packages have been preloaded
+
+>library(tidyverse) #loads dplyr, ggplot, and others   
+>library(nycflights13)  
+>library(lubridate)  
+>library(caret)
+
+## Summarize the flight data
+
+```{r summary, echo=TRUE}
+summary(flights)
+```
+
+*The below code uses select to extract the flight, origin, dest, & dep_delay columns as a data frame and displays the first few rows.*
+
+```{r select_columns, echo=TRUE}
+flights_df <- select(flights, flight, origin, dest, delay = dep_delay)
+head(flights_df)
+```
+
+### Exercise 1 
+
+Write the R code to select the flight, carrier, origin, dest, & dep_delay columns and display the first few rows:
+
+```{r select, exercise=TRUE, exercise.eval=TRUE}
+
+```
+
+```{r select-solution}
+flights_df <- select(flights, carrier, origin, dest, delay = dep_delay)
+head(flights_df)
+```
+
+### Exercise 2
+
+*The below code groups flights by origin and summarizes the average delay and number of delays.*
+```{r group_origin, echo=TRUE}
+by_origin <- group_by(flights, origin, dest)
+summarize(by_origin, delay = mean(dep_delay, na.rm = TRUE),
+                      total = sum(dep_delay, na.rm = TRUE))
+```
+
+
+Now write code that groups rows by carrier and summarizes the average delay and total number of delays:
+
+```{r group_carrier, exercise=TRUE, exercise.eval=TRUE}
+  
+  
+```
+
+```{r group_carrier-solution}
+by_carrier <- group_by(flights, carrier)
+summarize(by_carrier, delay = mean(dep_delay, na.rm = TRUE),
+                      total = sum(dep_delay, na.rm = TRUE))
+```
+
+
+## Visualize the data with ggplot
+
+A subset of the dataset (5k rows) was used for the visualizations. Using ggplot, plot the number of flight delays.  
+Plot1 shows the majority of flights from NYC airports departed on-time in 2013.
+
+```{r freqpoly, echo=TRUE}
+data <- flights %>%
+  na.omit() %>% #omit missing values
+  sample_n(5000) #sample 5,000 rows
+
+plot1 <- ggplot(data) +
+  geom_freqpoly((aes(x = dep_delay)), binwidth = 2.5) +
+  labs(x = "departure delay (minutes)", y = "number of delays") 
+
+plot1
+```
+
+The barplot below plots the number of flight delays by departure hour. This plot shows that flights were scheduled to depart between the hours of 500 (5am) and 2400 (12am). The majority of flight delays occurred in the morning between 5am - 9am. 
+
+```{r col, echo=TRUE}
+bar_plot <- ggplot(data, aes(x=hour)) +
+  geom_bar() +
+  labs(x = "departure hour", y= "number of delays" ) 
+
+bar_plot 
+```
+
+The plot shows the number of delays by carrier and origin. Carriers, EV, UA, and B6 experienced the largest number of delays with those delayed flights originating out of EWR and JFK.
+
+```{r col2, echo=TRUE}
+facet <- ggplot(data, aes(origin, fill=origin)) +
+  geom_bar() + 
+  facet_wrap(~carrier) +
+  labs(x = "origin", y= "number of delays" ) 
+
+facet
+```
+
+### Exercise 3
+
+*Using geom_point, create a scatterplot that plots flight arrival delays (minutes) by distance using the following structure: ggplot(data, aes(x,y) + geom_point().*
+
+```{r solve_scatter, exercise=TRUE, exercise.eval=TRUE}
+
+
+```
+
+
+```{r solve_scatter-solution}
+scatter_plot <- ggplot(data, aes(x=distance, y=arr_delay)) + 
+  geom_point(color = "blue") +
+  labs(y= "arrival delays (minutes)") 
+
+scatter_plot
+
+```
+
+### Inspect the plot and discuss the pattern
+What impact does distance has on flight arrival delays?
+
+```{r quiz}
+quiz(
+  question("According to the above plot, shorter distance flights experience delays similar to longer distances.",
+    answer("False"),
+    answer("True", correct = TRUE)
+  )
+)
+```
+
+## Preprocess Data
+#### Add a column classifying flight as delayed (1) or not delayed (0) and name the column "delayed". Omit missing values.
+
+```{r add_column, echo=TRUE}
+#add target variable
+flights_df <- flights %>%
+  add_column(delayed = ifelse(flights$arr_delay > 0, 1, 0)) %>%
+  na.omit()
+
+head(flights_df)
+```
+    
+
+#### Concatenate "year", "month, & "day" columns then find the day of week create variable day_of week.
+
+```{r day_of_week, echo=TRUE}
+#calculate day of week
+date <- ymd(str_c(flights_df$year, "-",flights_df$month, "-", flights_df$day))
+day_of_week <- as.character(wday(date, label=TRUE))
+
+head(day_of_week)
+```
+  
+  
+#### Add "day_of_week" column and select columns "day_of_week", "hour", "carrier", "origin", "dest", and "delayed". 
+
+```{r add_select_columns, echo=TRUE}
+#add day of week column and select predictors
+flights_df <- flights_df %>%
+  add_column(day_of_week) %>%
+  select(day_of_week, hour, carrier, origin, dest, delayed)
+
+head(flights_df)
+```
+
+### Exercise 4
+
+*Add the variable "date" to flights_df and display the first 5 rows.*
+
+```{r add_date, exercise=TRUE, exercise.eval=TRUE}
+
+
+```
+
+
+```{r add_date-solution}
+flights_df <- flights_df %>%
+  add_column(date)
+  
+head(flights_df)
+
+```
+
+## Analysis
+### Logistic Regression
+#### We will use logistic regression to predict whether a flight is delayed or ontime.
+First, we label the "delayed" column 1 - delayed, 0 - ontime
+```{r label_delay, echo=TRUE}
+flights_df$delayed <- factor(flights_df$delayed, levels = c(1, 0), 
+                            labels = c("delayed", "ontime"))
+
+head(flights_df)
+```
+
+
+### Transform Variables
+Bin "hour" variable into "morning", "afternoon", and "evening"; "day_of_week" variable into "weekday" and "weekend"; carriers (CO, MQ, DH, RU) variable in carrier_CO_MQ_DH_RU.
+```{r label_time_of_day, echo=TRUE}
+flights_df$morning <- flights_df$hour %in% c(1, 2, 3, 4, 5, 6, 7, 8, 9)
+flights_df$afternoon <- flights_df$hour %in% c(10, 11, 12, 13, 14, 15, 16, 17, 18)
+flights_df$evening <- flights_df$hour %in% c(19, 20, 21, 22, 23)
+
+flights_df$weekend <- flights_df$day_of_week %in% c("Sun", "Sat")
+flights_df$weekday <- flights_df$day_of_week %in% c("Mon", "Tue", "Wed", "Thu", "Fri")
+
+flights_df$carrier_CO_MQ_DH_RU <- flights_df$carrier %in% c("CO", "MQ", "DH", "RU")
+
+head(flights_df)
+```
+
+### Partition Data
+Split data into training (60%) and validation (40%)
+```{r partition, echo=TRUE}
+selected.var <- c("delayed", "weekend", "carrier_CO_MQ_DH_RU", "morning", "afternoon", 
+                "evening")
+set.seed(2)
+train.index <- sample(c(1:dim(flights_df)[1]), dim(flights_df)[1]*0.6)
+train.df <- flights_df[train.index, selected.var]
+valid.df <- flights_df[-train.index, selected.var]
+
+```
+
+### Run Logistic Regression
+Use training data to create model
+```{r model, echo=TRUE}
+lm.fit <- glm(delayed ~ ., data = train.df, family = "binomial")
+summary(lm.fit)
+```
+
+### Use Confusion Matrix to evaluate performance  
+
+```{r confusion_matrix, echo=TRUE}
+pred <- predict(lm.fit, valid.df)
+confusionMatrix(as.factor(ifelse(pred > 0.25, 1, 0)), as.factor(ifelse(valid.df$delayed=="delayed", 0, 1)))
+```
